@@ -3,6 +3,7 @@ package logrusx
 import (
 	"errors"
 	"os"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -20,6 +21,7 @@ type LogField struct {
 }
 
 type logger struct {
+    mu             sync.RWMutex
 	logrusLogging *logrus.Logger
 	Fields        logrus.Fields
 	logChannel    chan logRequest // Channel for logger requests
@@ -109,6 +111,9 @@ func (l *logger) processLogQueue() {
 }
 
 func (l *logger) fillFields(fields []LogField) logrus.Fields {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+
 	allFields := make(logrus.Fields, len(l.Fields))
 
 	for key, value := range l.Fields {
