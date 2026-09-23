@@ -44,6 +44,15 @@ func TestNewInvalidServiceName(t *testing.T) {
 	}
 }
 
+func TestNewIgnoresNilOption(t *testing.T) {
+	l, buf := newTestLogger(t, nil)
+	l.Info("msg")
+	l.Close()
+	if got := len(readEntries(t, buf)); got != 1 {
+		t.Fatalf("expected 1 entry, got %d", got)
+	}
+}
+
 func TestWarning(t *testing.T) {
 	l, buf := newTestLogger(t)
 
@@ -135,15 +144,15 @@ func TestDebugLevel(t *testing.T) {
 
 func TestFatalWaitsForWrite(t *testing.T) {
 	l, buf := newTestLogger(t)
-	exitCode := -1
-	l.logrusLogging.ExitFunc = func(code int) { exitCode = code }
+	exitCode, exitCalls := -1, 0
+	l.logrusLogging.ExitFunc = func(code int) { exitCode, exitCalls = code, exitCalls+1 }
 
 	l.Info("before")
 	l.Fatal("fatal message")
 
-	// Fatal must return only after the message is written and Exit is called
-	if exitCode != 1 {
-		t.Fatalf("expected exit code 1, got %d", exitCode)
+	// Fatal must return only after the message is written and Exit is called once
+	if exitCode != 1 || exitCalls != 1 {
+		t.Fatalf("expected one exit with code 1, got %d calls with code %d", exitCalls, exitCode)
 	}
 	l.Close()
 
@@ -155,13 +164,13 @@ func TestFatalWaitsForWrite(t *testing.T) {
 
 func TestFatalExitsWhenLevelDisabled(t *testing.T) {
 	l, buf := newTestLogger(t, WithLevel(logrus.PanicLevel))
-	exitCode := -1
-	l.logrusLogging.ExitFunc = func(code int) { exitCode = code }
+	exitCode, exitCalls := -1, 0
+	l.logrusLogging.ExitFunc = func(code int) { exitCode, exitCalls = code, exitCalls+1 }
 
 	l.Fatal("fatal message")
 
-	if exitCode != 1 {
-		t.Fatalf("expected exit code 1, got %d", exitCode)
+	if exitCode != 1 || exitCalls != 1 {
+		t.Fatalf("expected one exit with code 1, got %d calls with code %d", exitCalls, exitCode)
 	}
 	l.Close()
 	if got := len(readEntries(t, buf)); got != 0 {

@@ -62,7 +62,9 @@ func New(serviceName string, opts ...Option) (Logging, error) {
 
 	cfg := config{level: logrus.InfoLevel, output: os.Stdout}
 	for _, opt := range opts {
-		opt(&cfg)
+		if opt != nil {
+			opt(&cfg)
+		}
 	}
 
 	fieldMap := logrus.FieldMap{}
